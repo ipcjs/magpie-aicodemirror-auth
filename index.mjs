@@ -7,7 +7,7 @@ import { APIError, catalog, listModelIDs, modelLoader, listKeys, boundModels } f
 export const AICodeMirrorAuthPlugin = async (_input, options = {}) => ({
   async config(config) {
     config.provider ??= {};
-    config.provider["aicodemirror-balance"] ??= {
+    config.provider["aicodemirror"] ??= {
       name: "AICodeMirror",
       npm: "@ai-sdk/openai-compatible",
       api: "https://api.aicodemirror.ai/v1",
@@ -15,7 +15,7 @@ export const AICodeMirrorAuthPlugin = async (_input, options = {}) => ({
     };
   },
   auth: {
-    provider: "aicodemirror-balance",
+    provider: "aicodemirror",
     methods: [loginMethod(options)],
     async loader(getAuth) { return modelLoader(getAuth); },
     async usage(getAuth) {
@@ -44,7 +44,7 @@ export const AICodeMirrorAuthPlugin = async (_input, options = {}) => ({
             && latest.balanceDisplay === auth.balanceDisplay && _input?.client?.auth?.set) {
             try {
               await _input.client.auth.set({
-                path: { id: "aicodemirror-balance" }, body: { ...latest, ...named },
+                path: { id: "aicodemirror" }, body: { ...latest, ...named },
               });
             } catch { /* Still show the verified identity if persistence fails. */ }
           }
@@ -59,7 +59,7 @@ export const AICodeMirrorAuthPlugin = async (_input, options = {}) => ({
     },
   },
   provider: {
-    id: "aicodemirror-balance",
+    id: "aicodemirror",
     async models(_provider, { auth } = {}) {
       if (!auth?.apiKey || !auth.baseURL || !Array.isArray(auth.boundModels)) return {};
       let bindings = auth.boundModels;

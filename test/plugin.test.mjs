@@ -101,22 +101,23 @@ test("requests abort at configured deadline", async () => {
 test("plugin config preserves existing provider and exposes no models by default", async () => {
   const plugin = await AICodeMirrorAuthPlugin();
   const config = {};
-  assert.equal(plugin.auth.provider, "aicodemirror-balance");
+  assert.equal(plugin.auth.provider, "aicodemirror");
   await plugin.config(config);
-  assert.deepEqual(config.provider["aicodemirror-balance"].models, {});
+  assert.deepEqual(config.provider["aicodemirror"].models, {});
   const custom = { name: "custom", models: { example: {} } };
-  config.provider["aicodemirror-balance"] = custom;
+  config.provider["aicodemirror"] = custom;
   await plugin.config(config);
-  assert.equal(config.provider["aicodemirror-balance"], custom);
+  assert.equal(config.provider["aicodemirror"], custom);
   await assert.rejects((await plugin.auth.loader(async () => ({}))).fetch(), /尚未选择 API Key/);
 });
 
-test("balance provider does not share the existing model provider ID", async () => {
+test("combined provider uses the same ID and preserves existing model configuration", async () => {
   const plugin = await AICodeMirrorAuthPlugin();
   const existing = { name: "AICodeMirror", models: { example: {} }, options: { proxy: "direct" } };
   const config = { provider: { aicodemirror: existing } };
   await plugin.config(config);
   assert.equal(config.provider.aicodemirror, existing);
-  assert.notEqual(config.provider[plugin.auth.provider], existing);
-  assert.deepEqual(config.provider[plugin.auth.provider].models, {});
+  assert.equal(plugin.provider.id, "aicodemirror");
+  assert.equal(config.provider[plugin.auth.provider], existing);
+  assert.deepEqual(config.provider[plugin.auth.provider].options, { proxy: "direct" });
 });

@@ -6,14 +6,14 @@
 
 ```powershell
 magpie plugin add .
-magpie plugin login aicodemirror-balance
+magpie plugin login aicodemirror
 ```
 
-显示名为 **AICodeMirror**，ID 沿用 `aicodemirror-balance`，避免与已有自定义供应商冲突。已验证 Magpie 0.1.824 的动态登录接口。原生 OpenCode 不支持此流程所需的 Magpie `ask` / `auth.usage` 扩展。
+显示名为 **AICodeMirror**，供应商 ID 为 `aicodemirror`。已有同名供应商配置会保留，模型和余额使用同一个 ID。已验证 Magpie 0.1.824 的动态登录接口。原生 OpenCode 不支持此流程所需的 Magpie `ask` / `auth.usage` 扩展。
 
 本地插件从原目录加载。升级后请在 **Magpie GUI 的 Plugins 中关闭再开启插件，或重启 GUI**；在终端开关插件不一定重载已运行的 GUI。
 
-旧余额账户继续查询余额。要启用模型，请重新执行本插件登录流程，选择 API Key；插件不会自动替你选择 Key。新登录按真实网站账户和所选 Key 区分，支持多个 Key。旧余额条目如仍存在，可在确认新账户正常后手动移除。
+从旧 ID `aicodemirror-balance` 升级时，重载插件后请执行 `magpie plugin login aicodemirror` 重新添加账号；旧 ID 下的凭据不会自动迁移。新登录按真实网站账户和所选 Key 区分，支持多个 Key。旧账号条目如仍存在，可在确认新账户正常后手动移除。
 
 ## 添加账户
 
@@ -97,7 +97,7 @@ Key 渠道绑定的模型与所选线路 `/v1/models` 的交集决定模型列�
 npm test
 npm run check
 npm pack --dry-run
-magpie quota aicodemirror-balance
+magpie quota aicodemirror
 ```
 
 测试覆盖动态登录、分页和失效 Key、渠道过滤、各协议认证、流式转发、取消、余额与模型认证隔离。若本机有 Magpie 缓存的 Bun 和插件宿主，还会在临时目录以合成凭据、模拟网络运行完整宿主测试，不修改真实配置。其他机器可指定 `MAGPIE_TEST_HOST` 和 `MAGPIE_TEST_BUN`。

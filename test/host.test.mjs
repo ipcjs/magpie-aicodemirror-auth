@@ -66,7 +66,7 @@ globalThis.fetch = async (input, init) => {
   const authPath = path.join(dir, "auth.json");
   const loaded = await rpc("init", { authPath, directory: root, plugins: [{ spec: root, target: root }] });
   assert.equal(loaded.plugins[0].error, undefined);
-  const provider = "aicodemirror-balance";
+  const provider = "aicodemirror";
   const inputs = {};
   for (const [key, value] of [["cookie", "session=synthetic"], ["keyId", "k1"], ["route", "global"], ["balanceDisplay", "paygo"]]) {
     const result = await rpc("prompt", { provider, method: 0, inputs });

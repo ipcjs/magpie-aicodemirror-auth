@@ -53,7 +53,7 @@ test("usage updates scoped identity preserving credentials and display preferenc
     const usage = await plugin.auth.usage(async () => auth);
     assert.equal(usage.user, `${name} · 按量`);
     assert.equal(usage.balance, "¥2.00");
-    assert.deepEqual(writes.at(-1), { path: { id: "aicodemirror-balance" }, body: { ...auth, accountId: `${name} · 按量`, accountName: name, uid: access } });
+    assert.deepEqual(writes.at(-1), { path: { id: "aicodemirror" }, body: { ...auth, accountId: `${name} · 按量`, accountName: name, uid: access } });
     await plugin.auth.usage(async () => writes.at(-1).body);
   }
   assert.equal(writes.length, 2);

@@ -8,10 +8,10 @@ test("option changes rename cached account without stacking suffixes or changing
     ? new Response(null, { status: 503 }) : Response.json({ success: true, data: { balance: 1000, bonusBalance: 2000 } }));
   let auth = { type: "oauth", access: "session=one", accountId: "Alice", uid: "1", balanceDisplay: "paygo" };
   const client = { auth: { set: async ({ body }) => { auth = body; } } };
-  for (const [mode, label, amount] of [["all", "总余额", "¥3.00"], ["subscription", "订阅", "¥1.00"], ["paygo", "按量", "¥2.00"], ["all", "总余额", "¥3.00"]]) {
+  for (const [mode, label, amount] of [["all", "", "¥3.00"], ["subscription", "订阅", "¥1.00"], ["paygo", "按量", "¥2.00"], ["all", "", "¥3.00"]]) {
     const plugin = await AICodeMirrorAuthPlugin({ client }, { balanceDisplay: mode });
     const result = await plugin.auth.usage(async () => auth);
-    assert.equal(result.user, `Alice · ${label}`);
+    assert.equal(result.user, label ? `Alice · ${label}` : "Alice");
     assert.equal(auth.accountId, result.user);
     assert.equal(auth.accountName, "Alice");
     assert.equal(auth.uid, "1");
@@ -68,8 +68,11 @@ test("identity failure preserves balance and cached name; stale auth is not over
   const plugin = await AICodeMirrorAuthPlugin({ client: { auth: { set: async x => writes.push(x) } } });
   const auth = { type: "oauth", access: "session=old", accountId: "Alice · 总余额", accountName: "Alice" };
   const usage = await plugin.auth.usage(async () => auth);
-  assert.equal(usage.user, "Alice · 总余额");
+  assert.equal(usage.user, "Alice");
   assert.equal(usage.balance, "¥0.003");
+  assert.equal(writes.length, 1);
+  assert.equal(writes[0].body.accountId, "Alice");
+  writes.length = 0;
   unavailable = false;
   let reads = 0;
   await plugin.auth.usage(async () => ++reads === 1 ? auth : { ...auth, access: "session=new" });

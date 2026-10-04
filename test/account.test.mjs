@@ -30,7 +30,7 @@ test("real account fields are selected without retaining session tokens", () => 
 
 test("session requests stay on fixed origin and sanitize failures", async () => {
   await queryAccount("session=test", { fetchImpl: async (url, init) => {
-    assert.equal(url, "https://www.aicodemirror.com/api/auth/session");
+    assert.equal(url, "https://www.aicodemirror.ai/api/auth/session");
     assert.equal(init.headers.Cookie, "session=test");
     assert.equal(init.redirect, "manual");
     assert.equal(init.cache, "no-store");

@@ -1,12 +1,12 @@
 {
   "name": "opencode-aicodemirror-auth",
-  "version": "0.1.6",
-  "description": "AICodeMirror account balance plugin for Magpie",
+  "version": "0.2.0",
+  "description": "AICodeMirror models and account balance plugin for Magpie",
   "type": "module",
   "main": "./index.mjs",
   "exports": { ".": "./index.mjs" },
   "files": ["index.mjs", "lib/", "README.md"],
-  "scripts": { "test": "node --test", "check": "node --check index.mjs && node --check lib/wallet.mjs && node --check lib/account.mjs" },
+  "scripts": { "test": "node --test", "check": "node --check index.mjs && node --check lib/wallet.mjs && node --check lib/account.mjs && node --check lib/api.mjs && node --check lib/login.mjs" },
   "engines": { "node": ">=20" },
   "keywords": ["opencode-plugin", "magpie", "aicodemirror"]
 }

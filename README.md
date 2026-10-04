@@ -1,52 +1,84 @@
 # opencode-aicodemirror-auth
 
-在 **Magpie** 中查看 AICodeMirror 网站账户余额的零依赖插件。
+一个 Magpie 供应商，同时提供 **AICodeMirror 模型调用和账户余额**。零运行时依赖，无需构建。
 
-- 可选择订阅余额、按量余额或两者合计；仅显示金额，保留到厘（¥0.001）。
-- 使用每个账户单独保存的网站 Cookie，支持 Magpie 多账户。
-- 查询超时、网站拒绝访问、非 JSON、接口异常时给出错误，不显示伪造的零余额。
-
-这是**余额查询专用供应商**，不会增加可调用模型。已有 AICodeMirror 模型供应商继续使用自己的 API Key；余额会显示在新添加的插件账户上，不会合并到已有自定义供应商。插件采用 OpenCode 插件结构，但 `auth.usage` 是 Magpie 扩展，原生 OpenCode 不会显示这些余额。
-
-供应商 ID 为 `aicodemirror-balance`，与模型供应商 `aicodemirror` 分开，避免同名供应商的代理设置和额度查询相互影响。网站在某些网络下需要代理；查询超时时请检查该余额供应商的代理设置。账户名称从 `https://www.aicodemirror.com/api/auth/session` 获取，依次采用用户名、名称、邮箱或登录手机号。登录时保存名称和网站用户 ID；已有账户下次查询余额时自动补全，无需重新登录。账户接口暂时不可用时保留已知名称和正常余额，不保存该接口返回的其他令牌。
-
-从 0.1.1 或更早版本升级后，需要在新的 `aicodemirror-balance` 供应商下登录。模型供应商配置无需修改。
-
-## 安装
-
-需要支持 `auth.usage` 的 Magpie。无需 npm install 或构建。
-
-在本项目目录执行：
+## 安装与升级
 
 ```powershell
 magpie plugin add .
 magpie plugin login aicodemirror-balance
-magpie quota
 ```
 
-也可以在 Magpie 设置 → Plugins 添加本项目的绝对目录，然后通过插件供应商入口登录 **AICodeMirror 余额**。不要移动或删除已添加的目录；本地插件从原目录加载。修改代码后，在 GUI 中关闭再开启插件。
+显示名为 **AICodeMirror**，ID 沿用 `aicodemirror-balance`，避免与已有自定义供应商冲突。已验证 Magpie 0.1.824 的动态登录接口。原生 OpenCode 不支持此流程所需的 Magpie `ask` / `auth.usage` 扩展。
 
-## 登录
+本地插件从原目录加载。升级后请在 **Magpie GUI 的 Plugins 中关闭再开启插件，或重启 GUI**；在终端开关插件不一定重载已运行的 GUI。
 
-余额接口使用**网站登录 Cookie**，不是用于模型调用的 `sk-…` API Key。
+旧余额账户继续查询余额。要启用模型，请重新执行本插件登录流程，选择 API Key；插件不会自动替你选择 Key。新登录按真实网站账户和所选 Key 区分，支持多个 Key。旧余额条目如仍存在，可在确认新账户正常后手动移除。
 
-1. 选择“网页登录并导入 Cookie（查询余额）”，浏览器打开 AICodeMirror 登录页。
-2. 登录并进入显示余额的页面。
-3. 打开浏览器开发者工具 → Network，刷新页面，找到 `/api/wallet` 请求。
-4. 在 Request Headers 中复制 **Cookie** 的完整单行值，粘贴回插件登录输入框。也接受以 `Cookie:` 开头的整行。不要复制响应的 `Set-Cookie` 或整个请求。
-5. 插件会先查询余额；成功后才保存会话。随后可在 Providers 账户及 `magpie quota` 查看余额。
+## 添加账户
 
-示例：订阅 ¥197.713、按量 ¥1.851，选择总余额时显示 `¥199.564`；选择单项时仅显示该项金额，不带“订阅剩余”或“按量剩余”前缀。
+1. 登录 https://www.aicodemirror.ai ，打开开发者工具 → Network，刷新钱包页面，复制 `/api/wallet` 请求的 **Cookie 请求头值**。
+2. 在 Magpie 选择 **Cookie 登录并选择 API Key**，粘贴 Cookie。
+3. 验证会话后选择 Key 名称。禁用或过期的 Key 不参与选择，选项仅包含名称、ID 和提示，不含完整密钥。
+4. 选择全球线路、国内优化线路或自定义 HTTPS 根地址。
+5. 选择总余额、订阅或按量。插件验证所选线路的模型列表后完成添加。
 
-Cookie 是账户凭据，请仅粘贴到本地插件登录框，不要发到聊天、日志或提交到仓库。插件使用宿主的 OAuth 会话存储字段保存导入的 Cookie；这不是自动 OAuth 登录，也没有自动续期。会话过期后重新登录并导入 Cookie。
+**Magpie 的普通提问框目前为明文输入，Cookie 不会自动遮蔽。** 不要在共享屏幕时输入，不要把 Cookie 或 Key 发到聊天、日志或仓库。输入错误导致步骤失败时，可取消后重试。
 
-## 选择显示的余额
+API Key 从网站接口获取，无需手动复制。凭据保存在宿主 `plugin-auth.json`：`access` 为 Cookie，`apiKey` 为所选模型密钥。模型接口只发送 API Key，网站接口只发送 Cookie。Cookie 过期后模型调用仍可使用已保存 Key；重新登录可更新 Cookie 或切换 Key。
 
-账号名会附带当前实际显示类型：`真实账号名 · 总余额`、`真实账号名 · 订阅` 或 `真实账号名 · 按量`。用量页的账号名也会显示该后缀，余额字段仍只显示金额。已有账户在查询余额时自动更新；修改选项后重新加载插件并刷新余额即可同步名称。网站原始账号名单独保存，切换选项不会重复追加后缀。
+账号显示如 `真实账号名 · cli · 按量`；优先使用网站用户名、名称、邮箱，再回退到手机号。余额字段仍为纯金额。
 
-登录时会出现“显示哪种余额？”下拉选择：**总余额 / 仅订阅余额 / 仅按量余额**。选择随当前账户保存，旧账户默认总余额。这是登录流程中的选择项，不是在用量卡片内新增按钮。
+## 线路和模型
 
-已有账户也可以不用重新登录：在 Magpie 配置目录的 `plugins.json` 中，找到本插件的现有条目，添加或修改 `options.balanceDisplay`：
+| 线路 | 根地址 |
+| --- | --- |
+| 全球 | `https://api.aicodemirror.ai` |
+| 国内优化 | `https://api.claudecode.net.cn` |
+| 自定义 | 明确填写的 HTTPS 根地址，不含 `/v1` 等路径 |
+
+代理沿用 Magpie 设置，不自动切换线路或重试生成请求。网站 API 固定为 `https://www.aicodemirror.ai`，不随模型线路改变。
+
+Key 渠道绑定的模型与所选线路 `/v1/models` 的交集决定模型列表，排除禁用渠道和 `unavailableModels`。协议依据产品代码确定，不按模型名称猜测：
+
+| 产品 | 协议 | 生成接口 |
+| --- | --- | --- |
+| CLAUDECODE | Anthropic Messages | `/v1/messages` |
+| CODEX | OpenAI Responses | `/v1/responses` |
+| GEMINI | Gemini | `/v1beta/models/{model}:generateContent` 或 `streamGenerateContent` |
+| GROK | OpenAI Chat Completions | `/v1/chat/completions` |
+
+保留流式响应、工具调用请求内容和取消信号；上游状态交由 Magpie 处理。网站会话失效时使用已保存渠道绑定；模型目录暂不可用时回退到已知绑定。API Key 被上游拒绝时提示重新登录。
+
+模型列出不保证网站渠道允许所有客户端。Claude SDK 文档要求适用于 Claude Code 之外场景的渠道；如渠道仅允许官方客户端，需要用户在网站选择兼容渠道。插件不会改动网站渠道或冒充官方客户端。
+
+上游目录不提供上下文或最大输出长度。插件使用保守默认值（上下文 32768、输出 4096），不是模型真实上限。可在插件条目的 `options.modelOverrides` 提供已确认的能力：
+
+```json
+{
+  "options": {
+    "modelOverrides": {
+      "你的模型ID": {
+        "limit": { "context": 65536, "output": 8192 },
+        "capabilities": { "reasoning": true },
+        "variants": { "high": { "reasoningEffort": "high" } }
+      }
+    }
+  }
+}
+```
+
+图像、音频和视频等额外能力未默认声明。接口来源：[Claude](https://www.aicodemirror.ai/dashboard/sdk-docs)、[OpenAI](https://www.aicodemirror.ai/dashboard/openai-sdk-docs)、[Gemini](https://www.aicodemirror.ai/dashboard/gemini-sdk-docs)、[Grok](https://www.aicodemirror.ai/dashboard/grok-api)、[Magpie 插件文档](https://usemagpie.ai/docs/plugins)。
+
+## 余额显示
+
+| `balanceDisplay` | 金额 | 账号后缀 |
+| --- | --- | --- |
+| `all`（默认） | 订阅 + 按量余额 | 总余额 |
+| `subscription` | 订阅余额 | 订阅 |
+| `paygo` | 按量余额 | 按量 |
+
+选项随账户保存，也可编辑 `~/.config/magpie/plugins.json`（遵循 `XDG_CONFIG_HOME`），在已有插件条目添加 `options.balanceDisplay`，覆盖所有账户的展示：
 
 ```json
 {
@@ -55,42 +87,19 @@ Cookie 是账户凭据，请仅粘贴到本地插件登录框，不要发到聊�
 }
 ```
 
-这只是 `plugins` 数组中单个条目的示例，**不要用它覆盖整个配置文件**；保留其他插件和设置。默认配置文件位于 `~/.config/magpie/plugins.json`，设置了 `XDG_CONFIG_HOME` 时位于其下的 `magpie/plugins.json`。
+这只是 `plugins` 数组中的一个条目，不要覆盖整个文件。修改后重载 GUI 插件，终端下次运行即加载。余额选项只影响展示，不决定扣费来源。
 
-| 值 | 显示内容 |
-| --- | --- |
-| `all` | 总余额：订阅余额 + 按量余额（默认） |
-| `subscription` | 仅订阅剩余 |
-| `paygo` | 仅按量剩余 |
-
-插件选项优先于登录时的账户选择，影响本插件所有账户；删除该选项恢复各账户选择。修改后重启 Magpie GUI，命令行下次运行即加载新配置。不需要再次导入 Cookie。接口缺少所选余额时明确报错，不会用另一种余额代替。
-
-原“全部显示”的配置值 `all` 保持兼容，升级后自动显示总余额，无需修改已有设置。
-
-## 数据和限制
-
-读取固定地址 `https://www.aicodemirror.com/api/wallet`，发送 Cookie，预期响应为：
-
-```json
-{"success":true,"data":{"balance":"197713","bonusBalance":"1851"}}
-```
-
-`balance` 为订阅余额，`bonusBalance` 为按量余额，均按整数厘转换为元。总余额先以整数厘精确相加，再格式化为元。总余额模式要求两项均存在；所选余额缺失或格式不合法时报错。
-
-已知接口只返回余额，没有套餐总额度、已用金额、用量百分比或重置日期，因此插件不会编造这些字段，也不会显示误导性的进度条或固定的“PRO”套餐名。
-
-接口依据 [AiCodeMirror-Monitor 的 BalanceService](https://github.com/zzzhizhia/AiCodeMirror-Monitor/blob/main/AiCodeMirror%20Monitor/Services/BalanceService.swift) 独立实现；插件协议依据 [Magpie 官方插件文档](https://usemagpie.ai/docs/plugins)。该网站接口没有版本化保证，网站修改后可能需要更新插件。
-
-仅向上述固定 HTTPS 地址发送 Cookie，禁止自动跟随重定向；余额查询 15 秒超时，账户查询 8 秒超时。不带 `www` 的旧地址会返回 301，因此登录和查询均直接使用 `www` 地址。不会记录 Cookie、网站响应正文或原始网络错误，也不会将会话用于模型请求。
+`/api/wallet` 的 `balance` 为订阅余额，`bonusBalance` 为按量余额，单位整数厘。总额先精确相加再转为元，最多显示三位小数；缺少所选字段时报错，不推算用量比例和重置日期。
 
 ## 验证
-
-Node.js 20+：
 
 ```powershell
 npm test
 npm run check
 npm pack --dry-run
+magpie quota aicodemirror-balance
 ```
 
-测试使用模拟接口，覆盖金额精度、字段缺失、错误响应、凭据隔离、超时和登录回调。真实账户余额及 Magpie GUI 显示仍需使用有效 Cookie 验证。
+测试覆盖动态登录、分页和失效 Key、渠道过滤、各协议认证、流式转发、取消、余额与模型认证隔离。若本机有 Magpie 缓存的 Bun 和插件宿主，还会在临时目录以合成凭据、模拟网络运行完整宿主测试，不修改真实配置。其他机器可指定 `MAGPIE_TEST_HOST` 和 `MAGPIE_TEST_BUN`。
+
+网站会话、Key 列表、渠道模型与 `/v1/models` 已完成真实只读验证。未执行付费生成；生成协议的认证、流式和取消通过模拟接口与实际 Magpie 宿主验证，真实生成仍取决于所选渠道权限和上游服务。

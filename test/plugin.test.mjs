@@ -43,27 +43,6 @@ test("total sums exact li including carry, negative amounts and large balances",
   }
 });
 
-test("login saves selection per account; plugin option overrides it without re-login", async (t) => {
-  t.mock.method(globalThis, "fetch", async (url) => Response.json(url.endsWith("/api/auth/session") ? { user: { name: "Test User", id: "test-id" } } : wallet));
-  const plugin = await AICodeMirrorAuthPlugin();
-  assert.deepEqual(plugin.auth.methods[0].prompts[0].options.map(x => x.value), ["all", "subscription", "paygo"]);
-  assert.equal(plugin.auth.methods[0].prompts[0].options[0].label, "总余额");
-  const flow = await plugin.auth.methods[0].authorize({ balanceDisplay: "paygo" });
-  const saved = await flow.callback(cookie);
-  assert.equal(saved.balanceDisplay, "paygo");
-  const auth = { ...saved, type: "oauth" };
-  assert.equal((await plugin.auth.usage(async () => auth)).balance, "¥1.851");
-  assert.equal((await plugin.auth.usage(async () => ({ ...auth, balanceDisplay: "subscription" }))).balance, "¥197.713");
-  const override = await AICodeMirrorAuthPlugin(undefined, { balanceDisplay: "subscription" });
-  assert.equal((await override.auth.usage(async () => auth)).balance, "¥197.713");
-  const invalid = await AICodeMirrorAuthPlugin(undefined, { balanceDisplay: "typo" });
-  const error = await invalid.auth.usage(async () => auth);
-  assert.match(error.error, /设置无效/);
-  assert.equal(error.signIn, "kept");
-  const oldAuth = { type: "oauth", access: cookie };
-  assert.equal((await plugin.auth.usage(async () => oldAuth)).balance, parseWallet(wallet).balance);
-});
-
 test("normalizes Cookie prefix, preserves chunked sessions, rejects invalid inputs", () => {
   assert.equal(normalizeCookie(`Cookie: ${cookie}`), cookie);
   assert.equal(normalizeCookie("session.0=abc; session.1=def=="), "session.0=abc; session.1=def==");
@@ -74,7 +53,7 @@ test("normalizes Cookie prefix, preserves chunked sessions, rejects invalid inpu
 
 test("query sends cookie only to fixed wallet endpoint and disables redirects", async () => {
   const result = await queryWallet(cookie, { fetchImpl: async (url, init) => {
-    assert.equal(url, "https://www.aicodemirror.com/api/wallet");
+    assert.equal(url, "https://www.aicodemirror.ai/api/wallet");
     assert.equal(init.headers.Cookie, cookie);
     assert.equal(init.headers.Authorization, undefined);
     assert.equal(init.redirect, "manual");
@@ -129,7 +108,7 @@ test("plugin config preserves existing provider and exposes no models by default
   config.provider["aicodemirror-balance"] = custom;
   await plugin.config(config);
   assert.equal(config.provider["aicodemirror-balance"], custom);
-  await assert.rejects((await plugin.auth.loader()).fetch(), /仅查询余额/);
+  await assert.rejects((await plugin.auth.loader(async () => ({}))).fetch(), /尚未选择 API Key/);
 });
 
 test("balance provider does not share the existing model provider ID", async () => {
@@ -140,27 +119,4 @@ test("balance provider does not share the existing model provider ID", async () 
   assert.equal(config.provider.aicodemirror, existing);
   assert.notEqual(config.provider[plugin.auth.provider], existing);
   assert.deepEqual(config.provider[plugin.auth.provider].models, {});
-});
-
-test("login validates before saving, usage isolates account cookies and reports expiry", async (t) => {
-  const seen = [];
-  t.mock.method(globalThis, "fetch", async (_url, init) => {
-    if (_url.endsWith("/api/auth/session")) return Response.json({ user: { name: "Test User", id: "test-id" } });
-    seen.push(init.headers.Cookie);
-    return init.headers.Cookie === "session=expired" ? new Response(null, { status: 401 }) : Response.json(wallet);
-  });
-  const plugin = await AICodeMirrorAuthPlugin();
-  const flow = await plugin.auth.methods[0].authorize();
-  assert.equal(flow.url, "https://www.aicodemirror.com/login");
-  assert.equal(flow.method, "code");
-  const result = await flow.callback(cookie);
-  assert.deepEqual(result, { type: "success", access: cookie, refresh: "", expires: 0, balanceDisplay: "all", accountId: "Test User · 总余额", accountName: "Test User", uid: "test-id" });
-  const { type, ...credentials } = result;
-  assert.equal((await plugin.auth.usage(async () => ({ type: "oauth", ...credentials }))).signIn, "renewed");
-  assert.equal((await plugin.auth.usage(async () => ({ type: "oauth", access: "session=second" }))).signIn, "renewed");
-  assert.equal((await plugin.auth.usage(async () => ({ type: "oauth", access: "session=expired" }))).signIn, "expired");
-  assert.deepEqual(seen, [cookie, cookie, "session=second", "session=expired"]);
-  assert.equal((await flow.callback("session=expired")).type, "failed");
-  assert.equal((await flow.callback("sk-api-key")).type, "failed");
-  assert.equal((await plugin.auth.usage(async () => undefined)).signIn, "expired");
 });

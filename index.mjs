@@ -2,9 +2,12 @@ import { balanceDisplay, queryWallet, usageError } from "./lib/wallet.mjs";
 import { displayAccount, queryAccount } from "./lib/account.mjs";
 import { loginMethod } from "./lib/login.mjs";
 import { APIError, catalog, listModelIDs, modelLoader } from "./lib/api.mjs";
+import { reasoningCatalog, withReasoning } from "./lib/reasoning.mjs";
 
 // Export only the plugin: Magpie calls every function exported by this module.
-export const AICodeMirrorAuthPlugin = async (_input, options = {}) => ({
+export const AICodeMirrorAuthPlugin = async (_input, options = {}) => {
+  const metadata = reasoningCatalog();
+  return {
   async config(config) {
     config.provider ??= {};
     config.provider["aicodemirror"] ??= {
@@ -63,15 +66,16 @@ export const AICodeMirrorAuthPlugin = async (_input, options = {}) => ({
       if (!auth?.apiKey || !auth.baseURL) return {};
       try {
         const ids = await listModelIDs(auth.baseURL, auth.apiKey);
-        return catalog(ids, auth.baseURL);
+        return withReasoning(catalog(ids, auth.baseURL), await metadata());
       } catch (error) {
         if (error instanceof APIError && error.status === 401) {
           throw Object.assign(new Error("API Key 已失效，请重新登录选择。"), { signIn: "expired" });
         }
-        const fallback = catalog(auth.modelIDs ?? auth.boundModels?.map(m => m.id) ?? Object.keys(_provider?.models ?? {}), auth.baseURL);
+        const fallback = withReasoning(catalog(auth.modelIDs ?? auth.boundModels?.map(m => m.id) ?? Object.keys(_provider?.models ?? {}), auth.baseURL), await metadata());
         fallback[Symbol.for("magpie.fellBack")] = true;
         return fallback;
       }
     },
   },
-});
+  };
+};

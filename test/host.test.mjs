@@ -20,6 +20,7 @@ test("installed Magpie host runs dynamic login, stores credentials and exposes m
 globalThis.fetch = async (input, init) => {
  const u = new URL(input instanceof Request ? input.url : input);
  const json = x => Promise.resolve(Response.json(x));
+ if(u.hostname === 'models.dev') return json({openai:{models:{'gpt-test':{reasoning:true,reasoning_options:[{type:'effort',values:['low','high']}]}}}});
  if(u.pathname === '/api/auth/session') return json({user:{id:'u1',name:'Alice'}});
  if(u.pathname === '/api/apikeys') return json({success:true,total:1,data:[{id:'k1',name:'cli',apiKey:'sk-synthetic',isActive:true,expiresAt:null,bindings:[{product:'CODEX',channelId:1}]}]});
  if(u.pathname === '/v1/models') return json({data:[{id:'gpt-test'}]});
@@ -84,6 +85,10 @@ globalThis.fetch = async (input, init) => {
   const text = JSON.stringify(listed);
   assert.ok(text.includes("gpt-test"));
   assert.ok(text.includes("@ai-sdk/openai"));
+  const listedModels = listed.providers?.flatMap(p => p.models ?? []) ?? listed.flatMap(p => p.models ?? []);
+  const reasoningModel = listedModels.find(m => m.id === "gpt-test");
+  assert.equal(reasoningModel.reasoning, true);
+  assert.deepEqual(reasoningModel.variants, ["low", "high"]);
   assert.ok(!text.includes("sk-synthetic"));
   const usage = await rpc("usage", { provider, account: saved.account });
   assert.equal(usage.balance, "¥2.00");

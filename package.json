@@ -7,7 +7,7 @@
   "main": "./index.mjs",
   "exports": { ".": "./index.mjs" },
   "files": ["index.mjs", "lib/", "README.md"],
-  "scripts": { "test": "node --test", "check": "node --check index.mjs && node --check lib/wallet.mjs && node --check lib/account.mjs && node --check lib/api.mjs && node --check lib/login.mjs" },
+  "scripts": { "test": "node --test", "check": "node --check index.mjs && node --check lib/wallet.mjs && node --check lib/account.mjs && node --check lib/api.mjs && node --check lib/login.mjs && node --check lib/reasoning.mjs" },
   "engines": { "node": ">=20" },
   "keywords": ["opencode-plugin", "magpie", "aicodemirror"]
 }

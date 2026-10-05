@@ -54,7 +54,9 @@ API Key 从网站接口获取，无需手动复制。凭据保存在宿主 `plug
 
 模型列出不保证网站渠道允许所有客户端。Claude SDK 文档要求适用于 Claude Code 之外场景的渠道；如渠道仅允许官方客户端，需要用户在网站选择兼容渠道。插件不会改动网站渠道或冒充官方客户端。
 
-插件只返回模型 ID、名称及调用协议和地址，不设置固定长度、能力或推理档位。上下文、最大输出长度、是否支持思考和图片输入由 Magpie 按模型 ID 参考 models.dev 补全；具体推理档位遵循 Magpie 对插件的处理规则，不保证自动补全。需要调整长度时使用 Magpie 自带设置。旧的 `options.modelOverrides` 已移除，可从配置中删除。
+插件返回模型 ID、名称及调用协议和地址，不设置固定长度。上下文、最大输出长度和图片输入由 Magpie 按模型 ID 参考 models.dev 补全。需要调整长度时使用 Magpie 自带设置。旧的 `options.modelOverrides` 已移除，可从配置中删除。
+
+推理等级由插件读取 `https://models.dev/api.json` 补齐：按模型 ID 精确匹配 Anthropic、OpenAI、Google、xAI 原厂条目，只使用 `reasoning_options` 中明确列出的 `effort` 等级，并生成相应协议的 `variants`。仅支持思考开关或 token 预算的模型不会被人为添加等级。未匹配到的模型仍可使用。目录请求不携带 Cookie 或 API Key，超时为 5 秒；在插件实例内存中缓存 6 小时，并合并并发刷新。更新失败保留旧目录、5 分钟后允许重试；首次读取失败时模型列表仍正常返回，但暂不补全等级。重启插件会清空此缓存。
 
 接口来源：[Claude](https://www.aicodemirror.ai/dashboard/sdk-docs)、[OpenAI](https://www.aicodemirror.ai/dashboard/openai-sdk-docs)、[Gemini](https://www.aicodemirror.ai/dashboard/gemini-sdk-docs)、[Grok](https://www.aicodemirror.ai/dashboard/grok-api)、[Magpie 插件文档](https://usemagpie.ai/docs/plugins)。
 

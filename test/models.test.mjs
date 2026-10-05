@@ -146,11 +146,10 @@ test("expired website session does not expire API auth or drop saved model bindi
   assert.deepEqual(await plugin.provider.models({}, { auth: { type: "oauth", access: cookie } }), {});
 });
 
-test("catalog limits and capabilities may be overridden without changing credential destination", () => {
-  const result = catalog(models, "https://api.aicodemirror.ai", new Set(["model-1"]), {
-    "model-1": { limit: { context: 64000, output: 8000 }, capabilities: { reasoning: true }, variants: { high: {} } },
-  });
-  assert.equal(result["model-1"].limit.context, 64000);
-  assert.equal(result["model-1"].capabilities.reasoning, true);
+test("catalog leaves metadata unspecified for Magpie enrichment", () => {
+  const result = catalog(models, "https://api.aicodemirror.ai", new Set(["model-1"]));
+  assert.equal(Object.hasOwn(result["model-1"], "limit"), false);
+  assert.equal(Object.hasOwn(result["model-1"], "capabilities"), false);
+  assert.equal(Object.hasOwn(result["model-1"], "variants"), false);
   assert.equal(Object.keys(result).length, 1);
 });

@@ -71,12 +71,12 @@ export const AICodeMirrorAuthPlugin = async (_input, options = {}) => ({
       } catch { /* Keep the last confirmed channel bindings. */ }
       try {
         const ids = await listModelIDs(auth.baseURL, auth.apiKey);
-        return catalog(bindings, auth.baseURL, ids, options.modelOverrides);
+        return catalog(bindings, auth.baseURL, ids);
       } catch (error) {
         if (error instanceof APIError && error.status === 401) {
           throw Object.assign(new Error("API Key 已失效，请重新登录选择。"), { signIn: "expired" });
         }
-        const fallback = catalog(bindings, auth.baseURL, null, options.modelOverrides);
+        const fallback = catalog(bindings, auth.baseURL, null);
         fallback[Symbol.for("magpie.fellBack")] = true;
         return fallback;
       }

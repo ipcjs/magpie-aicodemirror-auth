@@ -52,23 +52,9 @@ Key 渠道绑定的模型与所选线路 `/v1/models` 的交集决定模型列�
 
 模型列出不保证网站渠道允许所有客户端。Claude SDK 文档要求适用于 Claude Code 之外场景的渠道；如渠道仅允许官方客户端，需要用户在网站选择兼容渠道。插件不会改动网站渠道或冒充官方客户端。
 
-上游目录不提供上下文或最大输出长度。插件使用保守默认值（上下文 32768、输出 4096），不是模型真实上限。可在插件条目的 `options.modelOverrides` 提供已确认的能力：
+插件只返回模型 ID、名称及调用协议和地址，不设置固定长度、能力或推理档位。上下文、最大输出长度、是否支持思考和图片输入由 Magpie 按模型 ID 参考 models.dev 补全；具体推理档位遵循 Magpie 对插件的处理规则，不保证自动补全。需要调整长度时使用 Magpie 自带设置。旧的 `options.modelOverrides` 已移除，可从配置中删除。
 
-```json
-{
-  "options": {
-    "modelOverrides": {
-      "你的模型ID": {
-        "limit": { "context": 65536, "output": 8192 },
-        "capabilities": { "reasoning": true },
-        "variants": { "high": { "reasoningEffort": "high" } }
-      }
-    }
-  }
-}
-```
-
-图像、音频和视频等额外能力未默认声明。接口来源：[Claude](https://www.aicodemirror.ai/dashboard/sdk-docs)、[OpenAI](https://www.aicodemirror.ai/dashboard/openai-sdk-docs)、[Gemini](https://www.aicodemirror.ai/dashboard/gemini-sdk-docs)、[Grok](https://www.aicodemirror.ai/dashboard/grok-api)、[Magpie 插件文档](https://usemagpie.ai/docs/plugins)。
+接口来源：[Claude](https://www.aicodemirror.ai/dashboard/sdk-docs)、[OpenAI](https://www.aicodemirror.ai/dashboard/openai-sdk-docs)、[Gemini](https://www.aicodemirror.ai/dashboard/gemini-sdk-docs)、[Grok](https://www.aicodemirror.ai/dashboard/grok-api)、[Magpie 插件文档](https://usemagpie.ai/docs/plugins)。
 
 ## 余额显示
 

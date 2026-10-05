@@ -1,19 +1,17 @@
-# opencode-aicodemirror-auth
+# magpie-aicodemirror-auth
 
 一个 Magpie 供应商，同时提供 **AICodeMirror 模型调用和账户余额**。零运行时依赖，无需构建。
 
-## 安装与升级
+## 安装
 
 ```powershell
-magpie plugin add .
+magpie plugin add magpie-aicodemirror-auth
 magpie plugin login aicodemirror
 ```
 
 显示名为 **AICodeMirror**，供应商 ID 为 `aicodemirror`。已有同名供应商配置会保留，模型和余额使用同一个 ID。已验证 Magpie 0.1.824 的动态登录接口。原生 OpenCode 不支持此流程所需的 Magpie `ask` / `auth.usage` 扩展。
 
-本地插件从原目录加载。升级后请在 **Magpie GUI 的 Plugins 中关闭再开启插件，或重启 GUI**；在终端开关插件不一定重载已运行的 GUI。
-
-从旧 ID `aicodemirror-balance` 升级时，重载插件后请执行 `magpie plugin login aicodemirror` 重新添加账号；旧 ID 下的凭据不会自动迁移。新登录按真实网站账户和所选 Key 区分，支持多个 Key。旧账号条目如仍存在，可在确认新账户正常后手动移除。
+账户按真实网站账户和所选 Key 区分，支持多个 Key。
 
 ## 添加账户
 
@@ -39,7 +37,7 @@ API Key 从网站接口获取，无需手动复制。凭据保存在宿主 `plug
 
 代理沿用 Magpie 设置，不自动切换线路或重试生成请求。网站 API 固定为 `https://www.aicodemirror.ai`，不随模型线路改变。
 
-模型列表直接读取所选线路的 `/v1/models`，不再查询或筛选 Key 的渠道绑定。列表可能包含当前 Key 无权限调用的模型。协议按模型 ID 前缀匹配（区分大小写）：
+模型列表直接读取所选线路的 `/v1/models`。列表可能包含当前 Key 无权限调用的模型。协议按模型 ID 前缀匹配（区分大小写）：
 
 | 模型前缀 | 协议 | 生成接口 |
 | --- | --- | --- |
@@ -50,11 +48,11 @@ API Key 从网站接口获取，无需手动复制。凭据保存在宿主 `plug
 
 未匹配的模型（包括 `o1`、`o3`）不设置 `api.npm`，仅保留所选线路的 `/v1` 地址。当前 Magpie 对这类插件模型回落到 Chat Completions，并非自动探测协议。
 
-保留流式响应、工具调用请求内容和取消信号；上游状态交由 Magpie 处理。模型列表查询不依赖网站 Cookie；模型目录暂不可用时回退到登录时保存的模型 ID（兼容旧账号保存的绑定）。API Key 被上游拒绝时提示重新登录。
+保留流式响应、工具调用请求内容和取消信号；上游状态交由 Magpie 处理。模型列表查询不依赖网站 Cookie；模型目录暂不可用时回退到登录时保存的模型 ID。API Key 被上游拒绝时提示重新登录。
 
 模型列出不保证网站渠道允许所有客户端。Claude SDK 文档要求适用于 Claude Code 之外场景的渠道；如渠道仅允许官方客户端，需要用户在网站选择兼容渠道。插件不会改动网站渠道或冒充官方客户端。
 
-插件返回模型 ID、名称及调用协议和地址，不设置固定长度。上下文、最大输出长度和图片输入由 Magpie 按模型 ID 参考 models.dev 补全。需要调整长度时使用 Magpie 自带设置。旧的 `options.modelOverrides` 已移除，可从配置中删除。
+插件返回模型 ID、名称及调用协议和地址，不设置固定长度。上下文、最大输出长度和图片输入由 Magpie 按模型 ID 参考 models.dev 补全。需要调整长度时使用 Magpie 自带设置。
 
 推理等级由插件读取 `https://models.dev/api.json` 补齐：按模型 ID 精确匹配 Anthropic、OpenAI、Google、xAI 原厂条目，只使用 `reasoning_options` 中明确列出的 `effort` 等级，并生成相应协议的 `variants`。仅支持思考开关或 token 预算的模型不会被人为添加等级。未匹配到的模型仍可使用。目录请求不携带 Cookie 或 API Key，超时为 5 秒；在插件实例内存中缓存 6 小时，并合并并发刷新。更新失败保留旧目录、5 分钟后允许重试；首次读取失败时模型列表仍正常返回，但暂不补全等级。重启插件会清空此缓存。
 
@@ -72,7 +70,7 @@ API Key 从网站接口获取，无需手动复制。凭据保存在宿主 `plug
 
 ```json
 {
-  "spec": "C:\\Users\\ipcjs\\Documents\\Codex\\opencode-aicodemirror-auth",
+  "spec": "magpie-aicodemirror-auth",
   "options": { "balanceDisplay": "paygo" }
 }
 ```
@@ -92,6 +90,6 @@ npm pack --dry-run
 magpie quota aicodemirror
 ```
 
-测试覆盖动态登录、分页和失效 Key、渠道过滤、各协议认证、流式转发、取消、余额与模型认证隔离。若本机有 Magpie 缓存的 Bun 和插件宿主，还会在临时目录以合成凭据、模拟网络运行完整宿主测试，不修改真实配置。其他机器可指定 `MAGPIE_TEST_HOST` 和 `MAGPIE_TEST_BUN`。
+测试覆盖动态登录、分页和失效 Key、模型列表、推理等级、各协议认证、流式转发、取消、余额与模型认证隔离。若本机有 Magpie 缓存的 Bun 和插件宿主，还会在临时目录以合成凭据、模拟网络运行完整宿主测试，不修改真实配置。其他机器可指定 `MAGPIE_TEST_HOST` 和 `MAGPIE_TEST_BUN`。
 
-网站会话、Key 列表、渠道模型与 `/v1/models` 已完成真实只读验证。未执行付费生成；生成协议的认证、流式和取消通过模拟接口与实际 Magpie 宿主验证，真实生成仍取决于所选渠道权限和上游服务。
+网站会话、Key 列表与 `/v1/models` 已完成真实只读验证。各协议的认证、流式和取消通过模拟接口与实际 Magpie 宿主验证，真实生成仍取决于所选渠道权限和上游服务。

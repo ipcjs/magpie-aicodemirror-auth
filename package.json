@@ -1,7 +1,10 @@
 {
-  "name": "opencode-aicodemirror-auth",
-  "version": "0.2.0",
+  "name": "magpie-aicodemirror-auth",
+  "version": "1.0.0",
   "description": "AICodeMirror models and account balance plugin for Magpie",
+  "repository": { "type": "git", "url": "git+https://github.com/ipcjs/magpie-aicodemirror-auth.git" },
+  "homepage": "https://github.com/ipcjs/magpie-aicodemirror-auth#readme",
+  "bugs": { "url": "https://github.com/ipcjs/magpie-aicodemirror-auth/issues" },
   "magpie": { "icon": "https://www.aicodemirror.ai/favicon.ico" },
   "type": "module",
   "main": "./index.mjs",

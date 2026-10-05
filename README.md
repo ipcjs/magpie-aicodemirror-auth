@@ -93,6 +93,8 @@ Key 渠道绑定的模型与所选线路 `/v1/models` 的交集决定模型列�
 
 ## 验证
 
+Magpie 0.1.970 的 `provider test aicodemirror <Gemini模型>` 会错误地使用 Chat Completions，导致请求被插件拦截。这不代表模型不可用；可通过本地网关或实际对话验证。已通过本地网关对 `gemini-3.8-flash` 完成真实生成请求（HTTP 200，返回 `OK`）。
+
 ```powershell
 npm test
 npm run check

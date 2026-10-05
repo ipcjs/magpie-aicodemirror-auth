@@ -116,6 +116,8 @@ test("transport signs each protocol, strips website credentials and preserves st
     await assert.rejects(loader.fetch(url, { method: "POST", body: "{}" }), /不属于/);
   }
   assert.equal(calls.length, 4);
+  await assert.rejects(loader.fetch(auth.baseURL + "/v1beta/chat/completions", { method: "POST", body: "{}" }), /Gemini 需要原生 generateContent/);
+  assert.equal(calls.length, 4);
 });
 
 test("transport keeps upstream failures and cancels without exposing secrets", async t => {

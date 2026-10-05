@@ -1,19 +1,16 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { AICodeMirrorAuthPlugin } from "../index.mjs";
-import { baseURL, listKeys, boundModels, modelLoader, catalog } from "../lib/api.mjs";
+import { baseURL, listKeys, modelLoader, catalog } from "../lib/api.mjs";
 
 const cookie = "session=website-secret";
 const key = { id: "k1", name: "cli", apiKey: "sk-model-secret", isActive: true, expiresAt: null,
   availableModelCount: 4, bindings: ["CLAUDECODE", "CODEX", "GEMINI", "GROK"].map((product, i) => ({ product, channelId: i + 1, channelIsActive: true })) };
-const groups = ["CLAUDECODE", "CODEX", "GEMINI", "GROK"].map((code, i) => ({ code,
-  channels: [{ id: i + 1, isActive: true, models: ["model-" + i, "blocked"], unavailableModels: ["blocked"] }] }));
-const models = groups.map((g, i) => ({ id: "model-" + i, product: g.code }));
+const models = ["claude-test", "gpt-test", "gemini-test", "grok-test"].map(id => ({ id }));
 function fakeFetch(url, init) {
   const path = new URL(url).pathname;
   if (path === "/api/auth/session") return Response.json({ user: { username: "Alice", id: "u1" } });
   if (path === "/api/apikeys") return Response.json({ success: true, data: [key], total: 1 });
-  if (path === "/api/apikeys/channel-options") return Response.json({ success: true, data: groups });
   if (path === "/v1/models") {
     assert.equal(init.headers.Authorization, "Bearer " + key.apiKey);
     assert.equal(init.headers.Cookie, undefined);
@@ -44,18 +41,18 @@ test("full dynamic login keeps secrets off choices and saves one combined accoun
   assert.equal(saved.baseURL, "https://api.aicodemirror.ai");
   assert.equal(saved.accountId, "Alice · cli · 按量");
   assert.equal(saved.uid, "u1:k1");
-  assert.deepEqual(saved.boundModels, models);
+  assert.deepEqual(saved.modelIDs, [...models.map(m => m.id), "unbound", "blocked"]);
   const auth = { ...saved, type: "oauth" };
   const usage = await plugin.auth.usage(async () => auth);
   assert.equal(usage.balance, "¥2.00");
   assert.equal(usage.user, saved.accountId);
   assert.equal(usage.signIn, "kept");
   const result = await plugin.provider.models({}, { auth });
-  assert.equal(Object.keys(result).length, 4);
-  assert.equal(result["model-0"].api.npm, "@ai-sdk/anthropic");
-  assert.equal(result["model-1"].api.npm, "@ai-sdk/openai");
-  assert.equal(result["model-2"].api.url, "https://api.aicodemirror.ai/v1beta");
-  assert.equal(result["model-3"].api.npm, "@ai-sdk/openai-compatible");
+  assert.equal(Object.keys(result).length, 6);
+  assert.equal(result["claude-test"].api.npm, "@ai-sdk/anthropic");
+  assert.equal(result["gpt-test"].api.npm, "@ai-sdk/openai");
+  assert.equal(result["gemini-test"].api.url, "https://api.aicodemirror.ai/v1beta");
+  assert.equal(result["grok-test"].api.npm, "@ai-sdk/openai-compatible");
 });
 
 test("custom root validation and changed key status fail before saving", async t => {
@@ -86,10 +83,14 @@ test("key pagination filters disabled and expired keys without leaking errors", 
   await assert.rejects(listKeys(cookie), e => e.status === 401 && !e.message.includes(cookie));
 });
 
-test("channel filtering excludes unavailable and inactive bindings", async t => {
-  t.mock.method(globalThis, "fetch", async () => Response.json({ success: true, data: groups }));
-  const result = await boundModels(cookie, { ...key, bindings: key.bindings.map((b, i) => ({ ...b, channelIsActive: i !== 1 })) });
-  assert.deepEqual(result.map(m => m.id), ["model-0", "model-2", "model-3"]);
+test("prefix matching leaves unknown models including o1 and o3 without a protocol", () => {
+  const ids = ["o1", "o3", "unbound", "gpt-test", "claude-test", "gemini-test", "grok-test"];
+  const result = catalog(ids, "https://api.aicodemirror.ai");
+  for (const id of ids.slice(0, 3)) {
+    assert.equal(Object.hasOwn(result[id].api, "npm"), false);
+    assert.equal(result[id].api.url, "https://api.aicodemirror.ai/v1");
+  }
+  assert.deepEqual(Object.keys(result), ids);
 });
 
 test("transport signs each protocol, strips website credentials and preserves stream", async t => {
@@ -147,9 +148,9 @@ test("expired website session does not expire API auth or drop saved model bindi
 });
 
 test("catalog leaves metadata unspecified for Magpie enrichment", () => {
-  const result = catalog(models, "https://api.aicodemirror.ai", new Set(["model-1"]));
-  assert.equal(Object.hasOwn(result["model-1"], "limit"), false);
-  assert.equal(Object.hasOwn(result["model-1"], "capabilities"), false);
-  assert.equal(Object.hasOwn(result["model-1"], "variants"), false);
+  const result = catalog(["gpt-test"], "https://api.aicodemirror.ai");
+  assert.equal(Object.hasOwn(result["gpt-test"], "limit"), false);
+  assert.equal(Object.hasOwn(result["gpt-test"], "capabilities"), false);
+  assert.equal(Object.hasOwn(result["gpt-test"], "variants"), false);
   assert.equal(Object.keys(result).length, 1);
 });

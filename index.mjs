@@ -1,7 +1,7 @@
 import { balanceDisplay, queryWallet, usageError } from "./lib/wallet.mjs";
 import { displayAccount, queryAccount } from "./lib/account.mjs";
 import { loginMethod } from "./lib/login.mjs";
-import { APIError, catalog, listModelIDs, modelLoader, listKeys, boundModels } from "./lib/api.mjs";
+import { APIError, catalog, listModelIDs, modelLoader } from "./lib/api.mjs";
 
 // Export only the plugin: Magpie calls every function exported by this module.
 export const AICodeMirrorAuthPlugin = async (_input, options = {}) => ({
@@ -9,7 +9,6 @@ export const AICodeMirrorAuthPlugin = async (_input, options = {}) => ({
     config.provider ??= {};
     config.provider["aicodemirror"] ??= {
       name: "AICodeMirror",
-      npm: "@ai-sdk/openai-compatible",
       api: "https://api.aicodemirror.ai/v1",
       models: {},
     };
@@ -61,22 +60,15 @@ export const AICodeMirrorAuthPlugin = async (_input, options = {}) => ({
   provider: {
     id: "aicodemirror",
     async models(_provider, { auth } = {}) {
-      if (!auth?.apiKey || !auth.baseURL || !Array.isArray(auth.boundModels)) return {};
-      let bindings = auth.boundModels;
-      // Refresh channel choices when the website session works. Saved bindings
-      // remain usable when it expires, independently of the model credential.
-      try {
-        const key = (await listKeys(auth.access)).find(k => String(k.id) === auth.keyId);
-        if (key) bindings = await boundModels(auth.access, key);
-      } catch { /* Keep the last confirmed channel bindings. */ }
+      if (!auth?.apiKey || !auth.baseURL) return {};
       try {
         const ids = await listModelIDs(auth.baseURL, auth.apiKey);
-        return catalog(bindings, auth.baseURL, ids);
+        return catalog(ids, auth.baseURL);
       } catch (error) {
         if (error instanceof APIError && error.status === 401) {
           throw Object.assign(new Error("API Key 已失效，请重新登录选择。"), { signIn: "expired" });
         }
-        const fallback = catalog(bindings, auth.baseURL, null);
+        const fallback = catalog(auth.modelIDs ?? auth.boundModels?.map(m => m.id) ?? Object.keys(_provider?.models ?? {}), auth.baseURL);
         fallback[Symbol.for("magpie.fellBack")] = true;
         return fallback;
       }

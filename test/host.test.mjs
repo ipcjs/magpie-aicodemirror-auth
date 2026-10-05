@@ -22,7 +22,6 @@ globalThis.fetch = async (input, init) => {
  const json = x => Promise.resolve(Response.json(x));
  if(u.pathname === '/api/auth/session') return json({user:{id:'u1',name:'Alice'}});
  if(u.pathname === '/api/apikeys') return json({success:true,total:1,data:[{id:'k1',name:'cli',apiKey:'sk-synthetic',isActive:true,expiresAt:null,bindings:[{product:'CODEX',channelId:1}]}]});
- if(u.pathname === '/api/apikeys/channel-options') return json({success:true,data:[{code:'CODEX',channels:[{id:1,isActive:true,models:['gpt-test'],unavailableModels:[]}]}]});
  if(u.pathname === '/v1/models') return json({data:[{id:'gpt-test'}]});
  if(u.pathname === '/api/wallet') return json({success:true,data:{balance:1000,bonusBalance:2000}});
  if(u.pathname === '/v1/responses') {

@@ -39,16 +39,18 @@ API Key 从网站接口获取，无需手动复制。凭据保存在宿主 `plug
 
 代理沿用 Magpie 设置，不自动切换线路或重试生成请求。网站 API 固定为 `https://www.aicodemirror.ai`，不随模型线路改变。
 
-Key 渠道绑定的模型与所选线路 `/v1/models` 的交集决定模型列表，排除禁用渠道和 `unavailableModels`。协议依据产品代码确定，不按模型名称猜测：
+模型列表直接读取所选线路的 `/v1/models`，不再查询或筛选 Key 的渠道绑定。列表可能包含当前 Key 无权限调用的模型。协议按模型 ID 前缀匹配（区分大小写）：
 
-| 产品 | 协议 | 生成接口 |
+| 模型前缀 | 协议 | 生成接口 |
 | --- | --- | --- |
-| CLAUDECODE | Anthropic Messages | `/v1/messages` |
-| CODEX | OpenAI Responses | `/v1/responses` |
-| GEMINI | Gemini | `/v1beta/models/{model}:generateContent` 或 `streamGenerateContent` |
-| GROK | OpenAI Chat Completions | `/v1/chat/completions` |
+| `claude-` | Anthropic Messages | `/v1/messages` |
+| `gpt-` | OpenAI Responses | `/v1/responses` |
+| `gemini-` | Gemini | `/v1beta/models/{model}:generateContent` 或 `streamGenerateContent` |
+| `grok-` | OpenAI Chat Completions | `/v1/chat/completions` |
 
-保留流式响应、工具调用请求内容和取消信号；上游状态交由 Magpie 处理。网站会话失效时使用已保存渠道绑定；模型目录暂不可用时回退到已知绑定。API Key 被上游拒绝时提示重新登录。
+未匹配的模型（包括 `o1`、`o3`）不设置 `api.npm`，仅保留所选线路的 `/v1` 地址。当前 Magpie 对这类插件模型回落到 Chat Completions，并非自动探测协议。
+
+保留流式响应、工具调用请求内容和取消信号；上游状态交由 Magpie 处理。模型列表查询不依赖网站 Cookie；模型目录暂不可用时回退到登录时保存的模型 ID（兼容旧账号保存的绑定）。API Key 被上游拒绝时提示重新登录。
 
 模型列出不保证网站渠道允许所有客户端。Claude SDK 文档要求适用于 Claude Code 之外场景的渠道；如渠道仅允许官方客户端，需要用户在网站选择兼容渠道。插件不会改动网站渠道或冒充官方客户端。
 

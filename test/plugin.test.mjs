@@ -75,6 +75,18 @@ test("expired credentials differ from transient errors and never leak response b
   }
 });
 
+test("Cloudflare challenges keep website authentication and explain the access restriction", async () => {
+  await assert.rejects(queryWallet(cookie, { fetchImpl: async () => new Response(cookie, {
+    status: 403, headers: { "cf-mitigated": "challenge", "content-type": "text/html" },
+  }) }), error => {
+    const failure = usageError(error);
+    assert.equal(failure.signIn, "kept");
+    assert.match(failure.error, /Cloudflare/);
+    assert.ok(!failure.error.includes(cookie));
+    return true;
+  });
+});
+
 test("non-JSON and network errors are sanitized", async () => {
   for (const fetchImpl of [async () => new Response(`<html>${cookie}</html>`), async () => { throw new Error(cookie); }]) {
     await assert.rejects(queryWallet(cookie, { fetchImpl }), error => {

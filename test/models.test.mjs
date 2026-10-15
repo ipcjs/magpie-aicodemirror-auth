@@ -1,3 +1,4 @@
+import { mockNetwork } from "../test-support/network.mjs";
 import test from "node:test";
 import assert from "node:assert/strict";
 import { AICodeMirrorAuthPlugin } from "../index.mjs";
@@ -21,7 +22,7 @@ function fakeFetch(url, init) {
 }
 
 test("full dynamic login keeps secrets off choices and saves one combined account", async t => {
-  t.mock.method(globalThis, "fetch", async (...args) => fakeFetch(...args));
+  mockNetwork(t, async (...args) => fakeFetch(...args));
   const plugin = await AICodeMirrorAuthPlugin();
   const method = plugin.auth.methods[0];
   const inputs = {};
@@ -59,7 +60,7 @@ test("custom root validation and changed key status fail before saving", async t
   for (const root of ["http://example.com", "https://u:p@example.com", "https://example.com/v1", "https://example.com?token=x", "bad"]) assert.throws(() => baseURL(root));
   assert.equal(baseURL("https://example.com/"), "https://example.com");
   let active = true;
-  t.mock.method(globalThis, "fetch", async (url, init) => new URL(url).pathname === "/api/apikeys"
+  mockNetwork(t, async (url, init) => new URL(url).pathname === "/api/apikeys"
     ? Response.json({ success: true, data: [{ ...key, isActive: active }], total: 1 }) : fakeFetch(url, init));
   const method = (await AICodeMirrorAuthPlugin()).auth.methods[0];
   assert.equal((await method.ask({ cookie, keyId: "k1", route: "custom" })).key, "baseURL");
@@ -69,9 +70,26 @@ test("custom root validation and changed key status fail before saving", async t
   await assert.rejects(method.ask({ cookie }), /没有有效/);
 });
 
+test("Cloudflare challenge diagnostics survive both login stages and Key lookup", async t => {
+  let blockedPath = "/api/auth/session";
+  mockNetwork(t, async (url, init) => new URL(url).pathname === blockedPath
+    ? new Response("session-secret", { status: 403, headers: { "cf-mitigated": "challenge" } })
+    : fakeFetch(url, init));
+  const method = (await AICodeMirrorAuthPlugin()).auth.methods[0];
+  for (const path of ["/api/auth/session", "/api/apikeys"]) {
+    blockedPath = path;
+    await assert.rejects(method.ask({ cookie }), /Cloudflare/);
+    const flow = await method.authorize({ cookie, keyId: "k1", route: "global", balanceDisplay: "all" });
+    const result = await flow.callback();
+    assert.equal(result.type, "failed");
+    assert.match(result.error, /Cloudflare/);
+    assert.ok(!result.error.includes("session-secret"));
+  }
+});
+
 test("key pagination filters disabled and expired keys without leaking errors", async t => {
   const pages = [];
-  t.mock.method(globalThis, "fetch", async url => {
+  mockNetwork(t, async url => {
     const page = Number(new URL(url).searchParams.get("page")); pages.push(page);
     return Response.json({ success: true, total: 21, data: page === 1 ? [
       key, { ...key, id: "disabled", isActive: false }, { ...key, id: "expired", expiresAt: "2000-01-01" },
@@ -79,7 +97,7 @@ test("key pagination filters disabled and expired keys without leaking errors", 
   });
   assert.deepEqual((await listKeys(cookie)).map(k => k.id), ["k1", "next"]);
   assert.deepEqual(pages, [1, 2]);
-  t.mock.method(globalThis, "fetch", async () => new Response(cookie, { status: 401 }));
+  mockNetwork(t, async () => new Response(cookie, { status: 401 }));
   await assert.rejects(listKeys(cookie), e => e.status === 401 && !e.message.includes(cookie));
 });
 
@@ -95,7 +113,7 @@ test("prefix matching leaves unknown models including o1 and o3 without a protoc
 
 test("transport signs each protocol, strips website credentials and preserves stream", async t => {
   const calls = [];
-  t.mock.method(globalThis, "fetch", async (url, init) => {
+  mockNetwork(t, async (url, init) => {
     calls.push({ url: String(url), init });
     assert.equal(await new Response(init.body).text(), '{"stream":true}');
     return new Response("data: first\n\ndata: [DONE]\n\n", { headers: { "content-type": "text/event-stream" } });
@@ -123,26 +141,26 @@ test("transport signs each protocol, strips website credentials and preserves st
 
 test("transport keeps upstream failures and cancels without exposing secrets", async t => {
   const loader = modelLoader(async () => ({ apiKey: key.apiKey, baseURL: "https://api.aicodemirror.ai" }));
-  t.mock.method(globalThis, "fetch", async () => new Response("quota", { status: 429 }));
+  mockNetwork(t, async () => new Response("quota", { status: 429 }));
   const input = new Request("https://api.aicodemirror.ai/v1/responses", { method: "POST", body: "{}" });
   assert.equal((await loader.fetch(input)).status, 429);
   const controller = new AbortController(); controller.abort();
-  t.mock.method(globalThis, "fetch", async (_url, init) => { assert.ok(init.signal.aborted); throw new Error(key.apiKey); });
+  mockNetwork(t, async (_url, init) => { assert.ok(init.signal.aborted); throw new Error(key.apiKey); });
   await assert.rejects(loader.fetch("https://api.aicodemirror.ai/v1/responses", { method: "POST", body: "{}", signal: controller.signal }), e => e.name === "AbortError" && !e.message.includes(key.apiKey));
 });
 
 test("expired website session does not expire API auth or drop saved model bindings", async t => {
-  t.mock.method(globalThis, "fetch", async url => new URL(url).pathname.startsWith("/api/")
+  mockNetwork(t, async url => new URL(url).pathname.startsWith("/api/")
     ? new Response(null, { status: 401 }) : Response.json({ data: models }));
   const plugin = await AICodeMirrorAuthPlugin();
   const auth = { type: "oauth", access: cookie, apiKey: key.apiKey, keyId: "k1", keyName: "cli",
     baseURL: "https://api.aicodemirror.ai", boundModels: models };
   assert.equal((await plugin.auth.usage(async () => auth)).signIn, "kept");
   assert.equal(Object.keys(await plugin.provider.models({}, { auth })).length, 4);
-  t.mock.method(globalThis, "fetch", async () => new Response(null, { status: 503 }));
+  mockNetwork(t, async () => new Response(null, { status: 503 }));
   const fallback = await plugin.provider.models({}, { auth });
   assert.equal(fallback[Symbol.for("magpie.fellBack")], true);
-  t.mock.method(globalThis, "fetch", async () => new Response(null, { status: 401 }));
+  mockNetwork(t, async () => new Response(null, { status: 401 }));
   await assert.rejects(plugin.provider.models({}, { auth }), e => e.signIn === "expired");
   assert.deepEqual(await plugin.provider.models({}, { auth: { type: "oauth", access: cookie } }), {});
 });

@@ -1,10 +1,12 @@
+import { mockNetwork } from "../test-support/network.mjs";
 import test from "node:test";
 import assert from "node:assert/strict";
 import { parseAccount, queryAccount } from "../lib/account.mjs";
 import { AICodeMirrorAuthPlugin } from "../index.mjs";
+import { APIError } from "../lib/api.mjs";
 
 test("option changes rename cached account without stacking suffixes or changing its UID", async (t) => {
-  t.mock.method(globalThis, "fetch", async url => url.endsWith("/session")
+  mockNetwork(t, async url => url.endsWith("/session")
     ? new Response(null, { status: 503 }) : Response.json({ success: true, data: { balance: 1000, bonusBalance: 2000 } }));
   let auth = { type: "oauth", access: "session=one", accountId: "Alice", uid: "1", balanceDisplay: "paygo" };
   const client = { auth: { set: async ({ body }) => { auth = body; } } };
@@ -42,8 +44,26 @@ test("session requests stay on fixed origin and sanitize failures", async () => 
   }
 });
 
+test("account failures distinguish challenges, rejected sessions and changed response formats", async () => {
+  for (const [response, expected] of [
+    [new Response("session-secret", { status: 403, headers: { "cf-mitigated": "challenge", "content-type": "text/html" } }), /Cloudflare/],
+    [new Response("session-secret", { status: 401 }), /拒绝访问（HTTP 401）/],
+    [new Response("session-secret", { status: 403 }), /拒绝访问（HTTP 403）/],
+    [new Response("session-secret", { status: 503 }), /HTTP 503/],
+    [new Response("session-secret"), /未返回 JSON/],
+    [Response.json({ accessToken: "session-secret" }), /未返回用户名/],
+  ]) {
+    await assert.rejects(queryAccount("session=test", { fetchImpl: async () => response }), error => {
+      assert.ok(error instanceof APIError);
+      assert.match(error.message, expected);
+      assert.ok(!error.message.includes("session-secret"));
+      return true;
+    });
+  }
+});
+
 test("usage updates scoped identity preserving credentials and display preferences", async (t) => {
-  t.mock.method(globalThis, "fetch", async (url, init) => Response.json(url.endsWith("/session")
+  mockNetwork(t, async (url, init) => Response.json(url.endsWith("/session")
     ? { user: { name: init.headers.Cookie === "session=one" ? "Alice" : "Bob", id: init.headers.Cookie } }
     : { success: true, data: { balance: 1000, bonusBalance: 2000 } }));
   const writes = [];
@@ -61,7 +81,7 @@ test("usage updates scoped identity preserving credentials and display preferenc
 
 test("identity failure preserves balance and cached name; stale auth is not overwritten", async (t) => {
   let unavailable = true;
-  t.mock.method(globalThis, "fetch", async url => url.endsWith("/session")
+  mockNetwork(t, async url => url.endsWith("/session")
     ? unavailable ? new Response(null, { status: 503 }) : Response.json({ user: { name: "Bob" } })
     : Response.json({ success: true, data: { balance: 1, bonusBalance: 2 } }));
   const writes = [];
